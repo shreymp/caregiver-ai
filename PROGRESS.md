@@ -8,7 +8,7 @@ M0 — Scaffold. Starting fresh build (Node upgraded 16.14.0 → 24.18.0 LTS via
 Run `npm create vite@latest . -- --template vanilla-ts` (or equivalent) to scaffold, then add PWA plugin, ESLint, Vitest, Playwright, and the directory tree from CLAUDE.md §5.
 
 ## Blockers / open questions
-- none
+- **BLOCKING M5 and M11 (and the tier-referencing parts of M8/M10 UI copy):** `validation/labeling-rubric.md` does not exist. Per CLAUDE.md guardrail #8, thresholds/signal defs/tier definitions must come from this human-authored file — it must NOT be fabricated by the agent. User has been asked and chose to author it themselves (see DECISIONS.md). Building M0-M4, M6, M7, M9-M10 (structure) in the meantime with placeholder/pass-through tier logic clearly marked TODO. Resume M5/M11 as soon as this file is supplied.
 
 ## Milestones
 - [ ] M0  Scaffold
