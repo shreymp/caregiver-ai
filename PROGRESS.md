@@ -2,10 +2,10 @@
 _Last updated: 2026-07-01T00:00:00Z by session-1_
 
 ## Current step
-M3 — Baseline. Per-signal robust baseline (median/MAD + EWMA), missing-day tolerant, online-updatable via bounded rolling window, confidence from sample sufficiency.
+M4 — Detection engine. Per-signal residual, diagonal-Mahalanobis (RMS) multivariate score, CUSUM changepoint (clipped to prevent single-blip trips), multi-day persistence counter. No LLM import — verified the ESLint guardrail actually blocks a detect/ -> reason/ import.
 
 ## Next action (resume here)
-Move to M4: detection engine (per-signal residual/z-score, Mahalanobis multivariate departure, changepoint, multi-day persistence rule) in src/detect/. No LLM import — enforce via the ESLint guardrail rule already in place.
+Move to M5: tiering rules in src/tier/ — **BLOCKED on validation/labeling-rubric.md** (see Blockers below). If still missing, skip ahead and build M6 (safety layer), M7 (parse/LLM), M9 (capture UI structure), M10 (wire-up skeleton) first, leaving M5/M11 for when the rubric arrives.
 
 ## Blockers / open questions
 - **BLOCKING M5 and M11 (and the tier-referencing parts of M8/M10 UI copy):** `validation/labeling-rubric.md` does not exist. Per CLAUDE.md guardrail #8, thresholds/signal defs/tier definitions must come from this human-authored file — it must NOT be fabricated by the agent. User has been asked and chose to author it themselves (see DECISIONS.md). Building M0-M4, M6, M7, M9-M10 (structure) in the meantime with placeholder/pass-through tier logic clearly marked TODO. Resume M5/M11 as soon as this file is supplied.
@@ -15,7 +15,7 @@ Move to M4: detection engine (per-signal residual/z-score, Mahalanobis multivari
 - [x] M1  Types & schema
 - [x] M2  Storage
 - [x] M3  Baseline
-- [ ] M4  Detection
+- [x] M4  Detection
 - [ ] M5  Tiering
 - [ ] M6  Safety (incl. Protocol 9-Delta)
 - [ ] M7  Parse (LLM + WebGPU fallback)
