@@ -26,9 +26,14 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  * deterministic template; (3) well-formed output is still checked for
  * tier-contradicting language and replaced with the deterministic template
  * if it fails that check.
+ *
+ * `getEngine` is a lazy factory rather than a resolved engine: when the
+ * tier is 'unsure' the LLM is never invoked, so callers should not have to
+ * pay for (or trigger) a multi-GB model download just to satisfy this
+ * function's signature.
  */
 export async function explainDeviation(
-  engine: LlmEngine,
+  getEngine: () => Promise<LlmEngine>,
   deviation: DeviationResult,
   tier: TierResult
 ): Promise<ExplanationResult> {
@@ -36,6 +41,7 @@ export async function explainDeviation(
     return { explanation: UNSURE_EXPLANATION_MESSAGE, usedFallback: true };
   }
 
+  const engine = await getEngine();
   const rawModelOutput = await engine.completeJson(
     buildExplanationSystemPrompt(),
     buildExplanationUserPrompt(deviation, tier),

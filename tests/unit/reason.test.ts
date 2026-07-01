@@ -93,7 +93,7 @@ describe('buildDeterministicFallbackExplanation', () => {
 describe('explainDeviation', () => {
   it("uses the fixed unsure message and never calls the LLM when tier is 'unsure'", async () => {
     const engine = new FakeLlmEngine('should never be read');
-    const result = await explainDeviation(engine, deviation(), tier({ tier: 'unsure', overriddenBySafety: true }));
+    const result = await explainDeviation(() => Promise.resolve(engine), deviation(), tier({ tier: 'unsure', overriddenBySafety: true }));
     expect(result.explanation).toBe(UNSURE_EXPLANATION_MESSAGE);
     expect(result.usedFallback).toBe(true);
     expect(engine.calls).toBe(0);
@@ -101,27 +101,27 @@ describe('explainDeviation', () => {
 
   it('passes through a well-formed, tier-consistent model explanation', async () => {
     const engine = new FakeLlmEngine(JSON.stringify({ explanation: 'Sleep has dipped for a few days — worth keeping an eye on things.' }));
-    const result = await explainDeviation(engine, deviation(), tier({ tier: 'watch' }));
+    const result = await explainDeviation(() => Promise.resolve(engine), deviation(), tier({ tier: 'watch' }));
     expect(result.usedFallback).toBe(false);
     expect(result.explanation).toContain('Sleep has dipped');
   });
 
   it('falls back to the deterministic template when the model returns invalid JSON', async () => {
     const engine = new FakeLlmEngine('not json at all');
-    const result = await explainDeviation(engine, deviation(), tier({ tier: 'watch' }));
+    const result = await explainDeviation(() => Promise.resolve(engine), deviation(), tier({ tier: 'watch' }));
     expect(result.usedFallback).toBe(true);
     expect(result.explanation).toContain('watch');
   });
 
   it('falls back to the deterministic template when the model output is missing the explanation field', async () => {
     const engine = new FakeLlmEngine(JSON.stringify({ summary: 'oops wrong field' }));
-    const result = await explainDeviation(engine, deviation(), tier({ tier: 'watch' }));
+    const result = await explainDeviation(() => Promise.resolve(engine), deviation(), tier({ tier: 'watch' }));
     expect(result.usedFallback).toBe(true);
   });
 
   it('falls back to the deterministic template when the model contradicts a watch tier with escalation language', async () => {
     const engine = new FakeLlmEngine(JSON.stringify({ explanation: 'This is an emergency — act immediately and call 911.' }));
-    const result = await explainDeviation(engine, deviation(), tier({ tier: 'watch', reason: 'mild sustained change' }));
+    const result = await explainDeviation(() => Promise.resolve(engine), deviation(), tier({ tier: 'watch', reason: 'mild sustained change' }));
     expect(result.usedFallback).toBe(true);
     expect(result.explanation).toContain('watch');
     expect(result.explanation.toLowerCase()).not.toContain('911');
@@ -130,7 +130,7 @@ describe('explainDeviation', () => {
   it('always returns the raw model output for audit logging when the LLM was actually called', async () => {
     const raw = JSON.stringify({ explanation: 'fine' });
     const engine = new FakeLlmEngine(raw);
-    const result = await explainDeviation(engine, deviation(), tier({ tier: 'watch' }));
+    const result = await explainDeviation(() => Promise.resolve(engine), deviation(), tier({ tier: 'watch' }));
     expect(result.rawModelOutput).toBe(raw);
   });
 });
