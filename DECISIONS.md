@@ -30,6 +30,18 @@
 - Alternatives considered: Whisper via Transformers.js (WebGPU) — fully on-device even on iOS, but adds a second model download/load path on top of the parse/reason LLM; deferred, the adapter-style `VoiceCaptureAdapter` interface keeps it swappable later.
 - Revisit if: iOS testing (CLAUDE.md M12 manual device check) shows Web Speech routes audio off-device in a way that's unacceptable for the privacy guardrail (#7) on that platform — TypeScript's lib.dom.d.ts doesn't ship a `SpeechRecognition` interface at all (only its result sub-types), so a minimal ambient type was hand-declared in src/capture/asr/speechToText.ts.
 
+## 2026-07-01 — M5 stand-in during M10 wire-up
+- Choice: Added `src/tier/pendingRubricStub.ts` (aliased as `computeTier` in `src/tier/index.ts`) so M10 could wire the full pipeline end-to-end without the labeling rubric. It always returns `{ tier: 'unsure', reason: '...rubric not supplied...' }` regardless of score — never a fabricated real tier.
+- Why: M10 needs *some* TierResult to feed into the safety layer and explanation stage to prove the wiring works; guardrail #8 still forbids guessing at real thresholds. Always-unsure is the only tier value that's honest without the rubric.
+- Alternatives considered: skipping M10 entirely until M5 lands — rejected, since CLAUDE.md explicitly lists M10 (wire-up + shell) as building on M1-M9 and the stub keeps the dependency honest and swappable (see the file's own header comment and the TODO in `src/tier/index.ts`).
+- Revisit if: never leave this as the shipped behavior — swap the `computeTier` export the moment M5 lands.
+
+## 2026-07-01 — Build pipeline: web-llm code-splitting (M10)
+- Choice: Dynamic `import('@mlc-ai/web-llm')` inside `WebLlmEngine.load()` (not a static top-level import), plus a `manualChunks` rule naming it `vendor-webllm` deterministically, plus `workbox.globIgnores` excluding that chunk from service-worker precache (with a `runtimeCaching` CacheFirst rule instead).
+- Why: a static import bundled web-llm's ~6MB wasm/tvmjs runtime into the main app chunk, which then failed the PWA build outright (workbox's default 2MB precache limit) and would have forced every visitor to download 6MB before seeing the UI, even on the guaranteed typed-only path that never touches the LLM. After the fix the main chunk is ~20KB and the web-llm runtime is fetched (and cached) only when a model actually loads.
+- Alternatives considered: just raising `maximumFileSizeToCacheInBytes` — rejected, it would "fix" the build error but still force-precache 6MB for every install regardless of whether the device ever uses the LLM path.
+- Revisit if: model weight files themselves also need explicit runtime-caching rules once M7's actual model download UX is hardened further (M12).
+
 ## 2026-07-01 — Build order priority (from CLAUDE.md §6)
 - Choice: Build M0-M6 + M11 (typed input path only) as the load-bearing minimum; M7-M10 (LLM parse/explain, voice, UI polish) and M12 (hardening) are valuable but degradable under time pressure.
 - Why: CLAUDE.md explicitly states the Smart 40 validation logs are the scored artifact and the deterministic core is what must never be at risk.

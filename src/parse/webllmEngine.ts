@@ -1,4 +1,4 @@
-import { CreateMLCEngine, type MLCEngine } from '@mlc-ai/web-llm';
+import type { MLCEngine } from '@mlc-ai/web-llm';
 import type { LlmEngine, LlmLoadProgress } from './llmEngine';
 
 /** Gemma-class ~2B model per CLAUDE.md tech stack note; confirmed present in @mlc-ai/web-llm's prebuiltAppConfig. */
@@ -18,6 +18,10 @@ export class WebLlmEngine implements LlmEngine {
   }
 
   async load(onProgress?: (progress: LlmLoadProgress) => void): Promise<void> {
+    // Dynamic import: @mlc-ai/web-llm's runtime is several MB (wasm/tvmjs glue
+    // code) and must not be bundled into the main app chunk — it should only
+    // ever be fetched when a model is actually being loaded.
+    const { CreateMLCEngine } = await import('@mlc-ai/web-llm');
     this.engine = await CreateMLCEngine(this.modelId, {
       initProgressCallback: onProgress
         ? (report) => {

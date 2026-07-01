@@ -7,6 +7,19 @@ export default defineConfig({
       '@': '/src',
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Named deterministically so workbox can exclude it from precache below —
+        // @mlc-ai/web-llm's runtime is multi-MB and must only be fetched on-demand
+        // (when a model actually loads), never force-downloaded at PWA install time.
+        manualChunks(id) {
+          if (id.includes('@mlc-ai/web-llm')) return 'vendor-webllm';
+          return undefined;
+        },
+      },
+    },
+  },
   plugins: [
     VitePWA({
       registerType: 'prompt',
@@ -39,9 +52,21 @@ export default defineConfig({
       workbox: {
         // Model weights are large and cached separately via the Cache API by the
         // LLM adapter itself (see src/parse, src/reason) — the service worker only
-        // precaches app shell assets, not model shards.
+        // precaches app shell assets, not model shards. The web-llm runtime chunk
+        // itself is also excluded from precache (see manualChunks above) and
+        // instead cached on first real use via runtimeCaching below.
         globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        globIgnores: ['**/vendor-webllm-*.js'],
+        runtimeCaching: [
+          {
+            urlPattern: /vendor-webllm-.*\.js$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'webllm-runtime',
+              expiration: { maxEntries: 4 },
+            },
+          },
+        ],
       },
       devOptions: {
         enabled: true,
