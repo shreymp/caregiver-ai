@@ -48,4 +48,18 @@ describe('renderApp (M10 wiring, happy path)', () => {
     expect(explanationEl?.textContent?.length ?? 0).toBeGreaterThan(0);
     expect(overrideEl?.textContent).toContain('your own judgment');
   });
+
+  it('renders the data export/import section with an accessible, labelled restore control (M12 a11y + iOS re-hydration)', async () => {
+    const root = document.createElement('div');
+    await renderApp(root);
+
+    const importInput = root.querySelector<HTMLInputElement>('#import-backup-input');
+    expect(importInput).not.toBeNull();
+    expect(importInput?.type).toBe('file');
+
+    const label = root.querySelector<HTMLLabelElement>('label[for="import-backup-input"]');
+    expect(label).not.toBeNull();
+
+    expect(root.querySelector('[data-testid="result-section"]')?.getAttribute('aria-live')).toBe('polite');
+  });
 });

@@ -17,12 +17,13 @@ export function renderTypedCaptureForm(container: HTMLElement, options: TypedCap
 
   const signalSelects = new Map<SignalKey, HTMLSelectElement>();
   for (const key of SIGNAL_KEYS) {
-    const label = document.createElement('label');
-    label.textContent = key;
-
     const select = document.createElement('select');
     select.name = key;
     select.id = `signal-${key}`;
+
+    const label = document.createElement('label');
+    label.textContent = key;
+    label.htmlFor = select.id;
 
     const unsetOption = document.createElement('option');
     unsetOption.value = '';
@@ -41,12 +42,16 @@ export function renderTypedCaptureForm(container: HTMLElement, options: TypedCap
     form.appendChild(label);
   }
 
-  const noteLabel = document.createElement('label');
-  noteLabel.textContent = 'Note (optional)';
   const noteInput = document.createElement('textarea');
   noteInput.name = 'note';
-  noteLabel.appendChild(noteInput);
+  noteInput.id = 'observation-note';
+
+  const noteLabel = document.createElement('label');
+  noteLabel.textContent = 'Note (optional)';
+  noteLabel.htmlFor = noteInput.id;
+
   form.appendChild(noteLabel);
+  form.appendChild(noteInput);
 
   const submitButton = document.createElement('button');
   submitButton.type = 'submit';

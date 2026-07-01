@@ -1,5 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import type { Baseline, ObservationRecord } from '@/types';
+import { updateBaseline } from '@/baseline';
+import { validateObservation, type Baseline, type ObservationRecord } from '@/types';
 
 const DB_NAME = 'perception-assist';
 const DB_VERSION = 1;
@@ -80,6 +81,51 @@ export async function exportAll(): Promise<ExportPayload> {
 export async function exportAllAsJson(): Promise<string> {
   const payload = await exportAll();
   return JSON.stringify(payload, null, 2);
+}
+
+export interface ImportResult {
+  importedObservations: number;
+  /** Rows that didn't pass schema validation (e.g. a hand-edited or corrupted export file) — never trusted, always skipped rather than silently accepted. */
+  rejectedObservations: number;
+}
+
+/**
+ * Restores observations from a previously exported payload (CLAUDE.md M12:
+ * "iOS storage re-hydration... restore from export" — iOS Safari can evict
+ * IndexedDB under storage pressure). Replaces the current store contents
+ * entirely, since a restore is meant to recover a prior authoritative state.
+ * Every observation is re-validated (guardrail #3's "never trust unvalidated
+ * data downstream" applies to a user-supplied file too, e.g. hand-edited or
+ * corrupted JSON) — invalid rows are skipped, not silently accepted. The
+ * baseline is recomputed from the restored observations rather than trusting
+ * the export's serialized baseline blob, since it's fully derivable and
+ * recomputing guarantees internal consistency.
+ */
+export async function importAll(payload: unknown): Promise<ImportResult> {
+  const rawObservations =
+    typeof payload === 'object' && payload !== null && Array.isArray((payload as { observations?: unknown }).observations)
+      ? (payload as { observations: unknown[] }).observations
+      : [];
+
+  const validRecords: ObservationRecord[] = [];
+  let rejectedObservations = 0;
+  for (const raw of rawObservations) {
+    const validation = validateObservation(raw);
+    if (validation.valid) {
+      validRecords.push(validation.record);
+    } else {
+      rejectedObservations += 1;
+    }
+  }
+
+  const db = await openDatabase();
+  await Promise.all([db.clear('observations'), db.clear('baselines')]);
+  for (const record of validRecords) {
+    await db.add('observations', record);
+  }
+  await db.put('baselines', updateBaseline(validRecords), CURRENT_BASELINE_KEY);
+
+  return { importedObservations: validRecords.length, rejectedObservations };
 }
 
 /** Test-only: wipes all stores. */

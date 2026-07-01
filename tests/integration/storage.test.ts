@@ -8,6 +8,7 @@ import {
   exportAll,
   getAllObservations,
   getBaseline,
+  importAll,
   setBaseline,
 } from '@/storage';
 import type { Baseline, ObservationRecord } from '@/types';
@@ -79,5 +80,52 @@ describe('storage (IndexedDB CRUD + export)', () => {
     expect(payload.observations).toHaveLength(1);
     expect(payload.baseline.sleep?.center).toBe(7);
     expect(() => new Date(payload.exportedAt).toISOString()).not.toThrow();
+  });
+});
+
+describe('importAll (iOS storage re-hydration path, M12)', () => {
+  beforeEach(async () => {
+    _resetDatabaseHandle();
+    await _clearAll();
+  });
+
+  it('restores valid observations and recomputes the baseline from them', async () => {
+    const payload = {
+      exportedAt: '2026-06-30T00:00:00.000Z',
+      observations: [makeRecord('2026-06-28T08:00:00.000Z'), makeRecord('2026-06-29T08:00:00.000Z')],
+      baseline: {},
+    };
+    const result = await importAll(payload);
+    expect(result.importedObservations).toBe(2);
+    expect(result.rejectedObservations).toBe(0);
+
+    const restored = await getAllObservations();
+    expect(restored).toHaveLength(2);
+    const baseline = await getBaseline();
+    expect(baseline.sleep?.sampleCount).toBe(2);
+  });
+
+  it('skips invalid rows rather than trusting a corrupted or hand-edited export file', async () => {
+    const payload = {
+      observations: [makeRecord('2026-06-28T08:00:00.000Z'), { timestamp: 'not-a-date', signals: {}, completeness: 2, source: 'typed' }],
+    };
+    const result = await importAll(payload);
+    expect(result.importedObservations).toBe(1);
+    expect(result.rejectedObservations).toBe(1);
+  });
+
+  it('replaces prior contents entirely (a restore recovers an authoritative prior state)', async () => {
+    await addObservation(makeRecord('2026-06-01T08:00:00.000Z'));
+    await importAll({ observations: [makeRecord('2026-06-28T08:00:00.000Z')] });
+
+    const restored = await getAllObservations();
+    expect(restored).toHaveLength(1);
+    expect(restored[0]?.timestamp).toBe('2026-06-28T08:00:00.000Z');
+  });
+
+  it('treats a malformed payload (no observations array) as zero importable rows rather than throwing', async () => {
+    const result = await importAll({ nonsense: true });
+    expect(result.importedObservations).toBe(0);
+    expect(result.rejectedObservations).toBe(0);
   });
 });

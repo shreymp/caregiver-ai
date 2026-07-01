@@ -42,6 +42,12 @@
 - Alternatives considered: just raising `maximumFileSizeToCacheInBytes` — rejected, it would "fix" the build error but still force-precache 6MB for every install regardless of whether the device ever uses the LLM path.
 - Revisit if: model weight files themselves also need explicit runtime-caching rules once M7's actual model download UX is hardened further (M12).
 
+## 2026-07-01 — M12 hardening scope taken
+- Choice: For this pass, hardening covers (1) graceful fallback when web-llm load fails at runtime (falls back to the deterministic explanation template, remembers the failure for the rest of the session so it doesn't retry a doomed multi-GB download on every submission), (2) iOS storage re-hydration via `importAll()` + a "Restore from a backup file" control (re-validates every row, recomputes the baseline from restored observations rather than trusting the export's serialized baseline blob), (3) a model-download progress percentage in the status text, and (4) an accessibility pass (`aria-live="polite"` on the result region, `role="status"` on status/notice text, explicit `label[for]`/`id` pairing on every form control).
+- Why: these are the concrete items CLAUDE.md's M12 line names (WebGPU fallback paths, iOS storage re-hydration, download progress UI, a11y pass) that don't depend on the labeling rubric.
+- Alternatives considered: a full retry/backoff UI for failed model loads, or a proper axe-core automated a11y audit — deferred as further polish beyond TRL3 scope; the current pass closes the specific gaps CLAUDE.md names.
+- Revisit if: real device testing (CLAUDE.md's manual iOS check) surfaces re-hydration triggers this pass didn't anticipate (e.g. detecting eviction proactively rather than only reacting to a manual restore).
+
 ## 2026-07-01 — Build order priority (from CLAUDE.md §6)
 - Choice: Build M0-M6 + M11 (typed input path only) as the load-bearing minimum; M7-M10 (LLM parse/explain, voice, UI polish) and M12 (hardening) are valuable but degradable under time pressure.
 - Why: CLAUDE.md explicitly states the Smart 40 validation logs are the scored artifact and the deterministic core is what must never be at risk.
