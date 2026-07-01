@@ -14,14 +14,14 @@ export default tseslint.config(
     },
   },
   {
-    // Guardrail: detect/ and tier/ are deterministic and must never import the LLM layers.
-    files: ['src/detect/**/*.ts', 'src/tier/**/*.ts'],
+    // Guardrail: detect/, tier/, and safety/ are deterministic and must never import the LLM layers (only parse/ and reason/ may call the LLM).
+    files: ['src/detect/**/*.ts', 'src/tier/**/*.ts', 'src/safety/**/*.ts'],
     rules: {
       'no-restricted-imports': [
         'error',
         {
           patterns: [
-            { group: ['**/parse/**', '**/reason/**'], message: 'detect/ and tier/ must be deterministic and may not import LLM-calling modules (parse/ or reason/).' },
+            { group: ['**/parse/**', '**/reason/**'], message: 'detect/, tier/, and safety/ must be deterministic and may not import LLM-calling modules (parse/ or reason/).' },
           ],
         },
       ],
