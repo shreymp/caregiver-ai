@@ -24,6 +24,12 @@
 - Alternatives considered: @huggingface/transformers (Transformers.js v4) — viable, but would require building constrained-JSON decoding by hand; not chosen for M7/M8 but the adapter interface keeps it swappable later.
 - Revisit if: benchmarking on a real phone (CLAUDE.md's manual device check, M12) shows the 2B model is too slow/heavy; a smaller prebuilt model (e.g. SmolLM2/Qwen3-0.6B, both present in `prebuiltAppConfig`) can be swapped in via the `modelId` constructor argument without touching the adapter interface.
 
+## 2026-07-01 — Voice capture (ASR) engine (M9)
+- Choice: Web Speech API (`SpeechRecognition`/`webkitSpeechRecognition`) rather than an in-browser Whisper model via Transformers.js.
+- Why: zero extra model download, works immediately, and voice is a convenience layer that just fills the same free-text box the LLM-assisted typed flow already parses — it doesn't need on-device-only guarantees as strongly as the observation data itself does (which never leaves the device regardless of ASR choice, since the transcript is processed by the same client-side parse pipeline as any other free text).
+- Alternatives considered: Whisper via Transformers.js (WebGPU) — fully on-device even on iOS, but adds a second model download/load path on top of the parse/reason LLM; deferred, the adapter-style `VoiceCaptureAdapter` interface keeps it swappable later.
+- Revisit if: iOS testing (CLAUDE.md M12 manual device check) shows Web Speech routes audio off-device in a way that's unacceptable for the privacy guardrail (#7) on that platform — TypeScript's lib.dom.d.ts doesn't ship a `SpeechRecognition` interface at all (only its result sub-types), so a minimal ambient type was hand-declared in src/capture/asr/speechToText.ts.
+
 ## 2026-07-01 — Build order priority (from CLAUDE.md §6)
 - Choice: Build M0-M6 + M11 (typed input path only) as the load-bearing minimum; M7-M10 (LLM parse/explain, voice, UI polish) and M12 (hardening) are valuable but degradable under time pressure.
 - Why: CLAUDE.md explicitly states the Smart 40 validation logs are the scored artifact and the deterministic core is what must never be at risk.
